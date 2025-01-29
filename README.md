@@ -1,2 +1,4 @@
-# usarchive
-Universal Simple Archive is a simple raw file archive format with simple security measures.
+# Universal Simple Archive
+Universal Simple Archive (USA) is a simple raw file archive format with simple security measures.
+## Structure
+![usarchive](images/struct.png)
