@@ -89,6 +89,10 @@ usa::file usarchive::popFile(){
     total_size -= lastfile.namesize+14+lastfile.size;
     return lastfile;
 };
+size_t usarchive::size(){return files.size();}
+usa::file usarchive::getFile(size_t i){return files[i];};
+void usarchive::putName(size_t i,std::string name){total_size = total_size+name.size()-files[i].namesize;memcpy(files[i].name,name.c_str(),name.size());files[i].namesize = name.size();};
+void usarchive::putData(size_t i,char* data,size_t size){total_size = total_size+size-files[i].size;memcpy(files[i].data,data,size);};
 void usarchive::writeTo(const std::string &filename){
     std::ofstream outfile(filename,std::ios::binary);
     /*

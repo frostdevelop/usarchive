@@ -32,6 +32,10 @@ public:
     void writeTo(const std::string &filename);
     void writeTo(std::ofstream &file);
     void unArchive(const std::string &path);
+    void putName(size_t i,std::string name);
+    void putData(size_t i,char* data,size_t size);
+    size_t size();
+    usa::file getFile(size_t i);
     usa::databuf writeBuf();
     unsigned short error();
     void open(std::ifstream &file);
