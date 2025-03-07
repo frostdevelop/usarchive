@@ -2,14 +2,14 @@
 #define STRINGTOOLS_H
 #include <string>
 
-class stringtools
+namespace stringtools
 {
-public:
-    stringtools();
-    static std::string trimEnds(std::string str);
-    static std::string trimR(std::string str);
-    static std::string trimL(std::string str);
-    static unsigned long checksum(std::string str);
+    std::string trimEnds(std::string str);
+    std::string trimR(std::string str);
+    std::string trimL(std::string str);
+    unsigned long checksum(std::string str);
+    std::string toLower(std::string str);
+    std::string toUpper(std::string str);
 };
 
 #endif // STRINGTOOLS_H

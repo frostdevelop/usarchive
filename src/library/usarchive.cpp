@@ -2,7 +2,6 @@
 #include <vector>
 #include <fstream>
 #include <cstring>
-//#include <stdexcept>
 #include <filesystem>
 #include <cstdint>
 #include <array>
@@ -32,6 +31,7 @@ void usarchive::addFile(usa::file file){
     files.push_back(file);
 };
 void usarchive::addFile(const std::string &name){
+    err = 0;
     std::filesystem::path rpath = stringtools::trimEnds(name);
     if(rpath.is_absolute()){err=5;return;}
     usa::file filedat;
@@ -105,6 +105,7 @@ void usarchive::writeTo(const std::string &filename){
     outfile.close();
 };
 void usarchive::writeTo(std::ofstream &file){
+    err = 0;
     if(!file.is_open()){
         file.close();
         err = 8;
@@ -115,54 +116,25 @@ void usarchive::writeTo(std::ofstream &file){
     file.write(reinterpret_cast<const char*>(&version),2);
     for(unsigned long i=0;i<files.size();i++){
         //std::cout << i << std::endl;
-        /*
-        char namesizebytes[2];
-        std::memcpy(namesizebytes,dtt::ufast162byte(files[i].namesize).data(),2);
-        file.write(reinterpret_cast<char *>(&namesizebytes),2); //reinterpret_cast<char*>(
-        */
         std::array<char,2> namesizebytes = dtt::ufast162byte(files[i].namesize);
         file.write(namesizebytes.data(),2);
         file.write(reinterpret_cast<char *>(files[i].name),files[i].namesize);
-        /*
-        char sizebytes[8];
-        std::memcpy(sizebytes,dtt::ufast642byte(files[i].size).data(),8);
-        file.write(reinterpret_cast<char *>(&sizebytes),8);
-        */
         std::array<char,8> sizebytes = dtt::ufast642byte(files[i].size);
         file.write(sizebytes.data(),8);
-        //optimize below
-        /*
-        dtt::ufast16bytes namesizeconv;
-        namesizeconv.value = files[i].namesize;
-        dtt::ufast64bytes filesizeconv;
-        filesizeconv.value = files[i].size;
-        */
         //uint_fast32_t fullchksum=namesizeconv.bytes[0]+namesizeconv.bytes[1]+filesizeconv.bytes[0]+filesizeconv.bytes[1]+filesizeconv.bytes[2]+filesizeconv.bytes[3]+filesizeconv.bytes[4]+filesizeconv.bytes[5]+filesizeconv.bytes[6]+filesizeconv.bytes[7];
         auto& unamesizebytes = reinterpret_cast<std::array<unsigned char, 2>&>(namesizebytes);
         auto& usizebytes = reinterpret_cast<std::array<unsigned char, 8>&>(sizebytes);
         uint_fast32_t fullchksum=unamesizebytes[0]+unamesizebytes[1]+usizebytes[0]+usizebytes[1]+usizebytes[2]+usizebytes[3]+usizebytes[4]+usizebytes[5]+usizebytes[6]+usizebytes[7];
         for(uint_fast16_t j=0;j<files[i].namesize;j++){
             //segfault ≧﹏≦
-            fullchksum+=files[i].name[j];//static_cast<uint_fast8_t>(
+            fullchksum+=files[i].name[j];
         }
-        /*
-        char chksumbytes[4];
-        std::memcpy(chksumbytes,dtt::ufast322byte(fullchksum).data(),4);
-        file.write(reinterpret_cast<char *>(&chksumbytes),4); //reinterpret_cast<char*>(
-        */
         /*
         std::array<char, 4> test = dtt::ufast322byte(fullchksum); //unsigned processing failed
         std::cout << static_cast<int>(static_cast<uint8_t>(test[0])) << std::endl << static_cast<int>(static_cast<uint8_t>(test[1])) << std::endl << static_cast<int>(static_cast<uint8_t>(test[2])) << std::endl << static_cast<int>(static_cast<uint8_t>(test[3])) << std::endl;
         */
         file.write(dtt::ufast322byte(fullchksum).data(),4);
         //std::cout << fullchksum << std::endl;
-        /*
-        char* testvar = new char(-13);
-        //file.write(test.data()+3,1);
-        file.write(testvar,1);
-        delete testvar;
-        */
-        //return;
         //std::cout << static_cast<int>(files[i].data[0]) << std::endl;
         file.write(reinterpret_cast<char *>(files[i].data),files[i].size);
     }
@@ -177,31 +149,16 @@ usa::databuf usarchive::writeBuf(){
     uint16_t version(0);
     std::memcpy(fulldata.data,reinterpret_cast<const char*>(&version),2);
     for(unsigned long i=0;i<files.size();i++){
-        /*
-        char filensize[2];
-        std::memcpy(filensize,dtt::ufast162byte(files[i].namesize).data(),2);
-        std::memcpy(fulldata.data+cursor,&filensize,2);
-        */
         std::memcpy(fulldata.data+cursor,dtt::ufast162byte(files[i].namesize).data(),2);
         cursor+=2;
         std::memcpy(fulldata.data+cursor,files[i].name,files[i].namesize);
         cursor+=files[i].namesize;
-        /*
-        char filesize[8];
-        std::memcpy(filesize,dtt::ufast642byte(files[i].size).data(),8);
-        std::memcpy(fulldata.data+cursor,&filesize,8);
-        */
         std::memcpy(fulldata.data+cursor,dtt::ufast642byte(files[i].size).data(),8);
         cursor+=8;
         uint_fast32_t fullchksum=0;
         for(uint_fast32_t j=cursor-10-files[i].namesize;j<cursor;j++){
             fullchksum += fulldata.data[j];
         }
-        /*
-        char chksumbytes[4];
-        std::memcpy(chksumbytes,dtt::ufast322byte(fullchksum).data(),4);
-        std::memcpy(fulldata.data+cursor,&chksumbytes,4);
-        */
         std::memcpy(fulldata.data+cursor,dtt::ufast322byte(fullchksum).data(),4);
         cursor += 4;
         std::memcpy(fulldata.data+cursor,files[i].data,files[i].size);
@@ -210,6 +167,7 @@ usa::databuf usarchive::writeBuf(){
     return fulldata;
 };
 void usarchive::unArchive(const std::string &path){
+    err = 0;
     std::filesystem::path rpath = stringtools::trimEnds(path);
     if(!std::filesystem::is_directory(rpath)){err=4;return;}
     if(!std::filesystem::exists(path)){std::filesystem::create_directories(rpath);} //err=4;return;
@@ -224,10 +182,7 @@ void usarchive::unArchive(const std::string &path){
     }
 }
 void usarchive::open(std::ifstream &file){
-    /*
-    usa::file filedat;
-    */
-    //SHOULD I USE UNIONS FOR EVERY CONVERSION???
+    err = 0;
     if(!file.is_open()){
         err = 7;
         //file.close();
@@ -243,7 +198,6 @@ void usarchive::open(std::ifstream &file){
     uint_fast16_t version = dtt::byte2ufast16(verbuf);
     if(version != 0){
         err = 1;
-        //file.close();
         return;
     }
     while(true){
@@ -254,14 +208,14 @@ void usarchive::open(std::ifstream &file){
         filedat.namesize = dtt::byte2ufast16(nsizebuf);
         filedat.name = new unsigned char[filedat.namesize]; //char *rnamebuf
         file.read(reinterpret_cast<char *>(filedat.name),filedat.namesize);
-        if(file.eof()){delete[] filedat.name;err=8;break;}
+        //if(file.eof()){delete[] filedat.name;err=8;break;}
         unsigned char filesizebuf[8];
         file.read(reinterpret_cast<char*>(filesizebuf),8);
-        if(file.eof()){delete[] filedat.name;err=8;break;}
+        //if(file.eof()){delete[] filedat.name;err=8;break;}
         filedat.size = dtt::byte2ufast64(reinterpret_cast<char*>(filesizebuf));
         unsigned char chksumbuf[4];
         file.read(reinterpret_cast<char*>(chksumbuf),4);
-        if(file.eof()){delete[] filedat.name;err=8;break;}
+        //if(file.eof()){delete[] filedat.name;err=8;break;}
         uint_fast32_t chksum = dtt::byte2ufast32(reinterpret_cast<char*>(chksumbuf));
         //uint_fast32_t rchksum = nsizebuf[0]+nsizebuf[1];
         //std::cout << "rck: " << rchksum << std::endl;
@@ -277,14 +231,12 @@ void usarchive::open(std::ifstream &file){
             //std::cout << rchksum << std::endl;
             err = 2;
             delete[] filedat.name;
-            //file.close();
             return;
         }
         filedat.data = new unsigned char[filedat.size]; //char *fullfiledata
         file.read(reinterpret_cast<char *>(filedat.data),filedat.size);
-        if(file.eof()){delete[] filedat.name;delete[] filedat.data;err=8;break;}
+        //if(file.eof()){delete[] filedat.name;delete[] filedat.data;err=8;break;}
         files.push_back(filedat);
-        //file.eof() && break;
     }
 }
 unsigned short usarchive::error(){
